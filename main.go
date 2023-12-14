@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/fatih/color"
+	"log"
 	"os"
 	"strings"
 
@@ -19,14 +21,14 @@ func main() {
 	input, _ := stdin.ReadString('\n')
 	input = strings.TrimSpace(input)
 
-	keyToFind := "" // searching value
+	searchKey := "" // searching value
 
 	//Read YAML File
 	if input == "" { // Value getting inline command
 		if len(os.Args) > 1 {
 			input = os.Args[1]
 			if len(os.Args) > 2 {
-				keyToFind = os.Args[2]
+				searchKey = os.Args[2]
 			} else {
 				fmt.Println("No search value inline.")
 				os.Exit(1)
@@ -37,7 +39,7 @@ func main() {
 		}
 	} else { // Value getting STDIN
 		if len(os.Args) > 1 {
-			keyToFind = os.Args[1]
+			searchKey = os.Args[1]
 		} else {
 			fmt.Println("No search value.")
 			os.Exit(1)
@@ -62,31 +64,56 @@ func main() {
 
 	content := Node.Content[0] // Get Node Content
 
-	findKeys(content, keyToFind)
-
-	//Encode YAML File
-	enc := yaml.NewEncoder(os.Stdout) // Create new encoder to os.Stdout
-	enc.SetIndent(2)
-	if err := enc.Encode(content); err != nil {
-		panic(err)
+	found := printKeyContent(content, searchKey, 0)
+	if !found {
+		fmt.Printf("Key '%s' not found\n", searchKey)
 	}
-
 }
 
-func findKeys(node *yaml.Node, key string) {
+func printKeyContent(node *yaml.Node, key string, depth int) bool {
+	found := false
+	lowercaseKey := strings.ToLower(key)
+	if node.Kind == yaml.MappingNode {
+		for i := 0; i < len(node.Content); i += 2 {
+			keyNode := node.Content[i]
+			valueNode := node.Content[i+1]
+			isContains := strings.Contains(strings.ToLower(keyNode.Value), lowercaseKey)
+			if isContains {
+				key = keyNode.Value
+			}
 
-	lowerCase := strings.ToLower(key)
-
-	for i, child := range node.Content { // scanning all content
-		if node.Kind == yaml.SequenceNode && child.Kind == yaml.ScalarNode { // if node type = list and child of node type = string pass
-			continue
-		}
-		if i%2 == 0 && child.Value != "" { // Keys = Twin, Values = Odd if child index = 0 (so, child = Key) and child value NOT empty
-			if strings.Contains(strings.ToLower(child.Value), lowerCase) {
-				child.Value = "FOUNDED_" + child.Value
+			if keyNode.Kind == yaml.ScalarNode && isContains {
+				fmt.Printf(color.RedString("Line %v:\n", keyNode.Line))
+				// Key Found, Print Content
+				fmt.Printf(color.YellowString("%s%s:\n", strings.Repeat("  ", depth), key))
+				marshalAndPrint(valueNode, depth+1)
+				found = true // Key Found
+			} else {
+				// Continue searching the key
+				if printKeyContent(valueNode, key, depth+1) {
+					found = true
+				}
 			}
 		}
-		findKeys(child, key)
+	} else if node.Kind == yaml.SequenceNode {
+		for _, n := range node.Content {
+			if printKeyContent(n, key, depth) {
+				found = true
+			}
+		}
 	}
+	return found
+}
 
+func marshalAndPrint(node *yaml.Node, depth int) {
+	out, err := yaml.Marshal(node)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
+		if line != "" {
+			fmt.Printf(color.CyanString("%s%s\n", strings.Repeat("  ", depth), line))
+		}
+	}
 }
