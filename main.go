@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/fatih/color"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -16,45 +16,33 @@ import (
 // ScalarNode = Solid String
 
 func main() {
+	var yamlContent []byte
+	var input, searchKey string
+	var err error
 
-	stdin := bufio.NewReader(os.Stdin)
-	input, _ := stdin.ReadString('\n')
-	input = strings.TrimSpace(input)
-
-	searchKey := "" // searching value
-
-	//Read YAML File
-	if input == "" { // Value getting inline command
-		if len(os.Args) > 1 {
-			input = os.Args[1]
-			if len(os.Args) > 2 {
-				searchKey = os.Args[2]
-			} else {
-				fmt.Println("No search value inline.")
-				os.Exit(1)
-			}
-		} else {
-			fmt.Println("No input provided")
-			os.Exit(1)
+	switch len(os.Args) {
+	case 2: // Get Values from STDIN
+		stdin, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			panic(err)
 		}
-	} else { // Value getting STDIN
-		if len(os.Args) > 1 {
-			searchKey = os.Args[1]
-		} else {
-			fmt.Println("No search value.")
-			os.Exit(1)
+		yamlContent = stdin
+		searchKey = os.Args[1]
+	case 3: // Get Values from file
+		input = os.Args[1]
+		searchKey = os.Args[2]
+		yamlContent, err = os.ReadFile(input)
+		if err != nil {
+			panic(err)
 		}
+	default:
+		fmt.Println("Invalid Args")
+		os.Exit(1)
 	}
-	yamlFile, err := os.ReadFile(input)
-	if err != nil {
-		panic(err)
-	}
-
-	// Read the key to find from the command line arguments
 
 	// Decode YAML File
 	var Node yaml.Node
-	if err := yaml.Unmarshal(yamlFile, &Node); err != nil {
+	if err := yaml.Unmarshal(yamlContent, &Node); err != nil {
 		panic(err)
 	}
 
@@ -86,11 +74,11 @@ func printKeyContent(node *yaml.Node, key string, depth int) bool {
 				fmt.Printf(color.RedString("Line %v:\n", keyNode.Line))
 				// Key Found, Print Content
 				fmt.Printf(color.YellowString("%s%s:\n", strings.Repeat("  ", depth), key))
-				marshalAndPrint(valueNode, depth+1)
+				marshalAndPrint(valueNode, depth)
 				found = true // Key Found
 			} else {
 				// Continue searching the key
-				if printKeyContent(valueNode, key, depth+1) {
+				if printKeyContent(valueNode, key, depth) {
 					found = true
 				}
 			}
