@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"io"
-	"log"
 	"os"
 	"strings"
 
@@ -16,89 +15,137 @@ import (
 // ScalarNode = Solid String
 
 func main() {
-	var yamlContent []byte
-	var input, searchKey string
-	var err error
-
-	switch len(os.Args) {
-	case 2: // Get Values from STDIN
-		stdin, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			panic(err)
-		}
-		yamlContent = stdin
-		searchKey = os.Args[1]
-	case 3: // Get Values from file
-		input = os.Args[1]
-		searchKey = os.Args[2]
-		yamlContent, err = os.ReadFile(input)
-		if err != nil {
-			panic(err)
-		}
-	default:
-		fmt.Println("Invalid Args")
+	searchKey, yamlContent, err := processArguments(os.Args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error processing arguments: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Decode YAML File
-	var Node yaml.Node
-	if err := yaml.Unmarshal(yamlContent, &Node); err != nil {
-		panic(err)
+	node, err := unmarshalYAML(yamlContent)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error unmarshaling YAML: %v\n", err)
+		os.Exit(1)
 	}
 
-	if len(Node.Content) == 0 {
-		panic("No YAML docs found")
+	if len(node.Content) == 0 {
+		fmt.Fprintln(os.Stderr, "No YAML docs found")
+		os.Exit(1)
 	}
 
-	content := Node.Content[0] // Get Node Content
-
-	found := printKeyContent(content, searchKey, 0)
+	content := node.Content[0] // Get Node Content
+	found, err := printKeyContent(content, searchKey, 0)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Occurred Error: %v\n", err)
+		os.Exit(1)
+	}
 	if !found {
 		fmt.Printf("Key '%s' not found\n", searchKey)
 	}
 }
 
-func printKeyContent(node *yaml.Node, key string, depth int) bool {
-	found := false
-	lowercaseKey := strings.ToLower(key)
-	if node.Kind == yaml.MappingNode {
-		for i := 0; i < len(node.Content); i += 2 {
-			keyNode := node.Content[i]
-			valueNode := node.Content[i+1]
-			isContains := strings.Contains(strings.ToLower(keyNode.Value), lowercaseKey)
-			if isContains {
-				key = keyNode.Value
-			}
-
-			if keyNode.Kind == yaml.ScalarNode && isContains {
-				fmt.Printf(color.RedString("Line %v:\n", keyNode.Line))
-				// Key Found, Print Content
-				fmt.Printf(color.YellowString("%s%s:\n", strings.Repeat("  ", depth), key))
-				marshalAndPrint(valueNode, depth)
-				found = true // Key Found
-			} else {
-				// Continue searching the key
-				if printKeyContent(valueNode, key, depth) {
-					found = true
-				}
-			}
-		}
-	} else if node.Kind == yaml.SequenceNode {
-		for _, n := range node.Content {
-			if printKeyContent(n, key, depth) {
-				found = true
-			}
-		}
+// processArguments processes and validates command line arguments.
+func processArguments(args []string) (searchKey string, yamlContent []byte, err error) {
+	switch len(args) {
+	case 2: // Get Values from STDIN
+		yamlContent, err = io.ReadAll(os.Stdin)
+		searchKey = args[1]
+	case 3: // Get Values from file
+		yamlContent, err = os.ReadFile(args[1])
+		searchKey = args[2]
+	default:
+		err = fmt.Errorf("invalid number of arguments")
 	}
-	return found
+	return
 }
 
-func marshalAndPrint(node *yaml.Node, depth int) {
+// unmarshalYAML unmarshals the YAML content into a YAML node.
+func unmarshalYAML(yamlContent []byte) (*yaml.Node, error) {
+	var node yaml.Node
+	err := yaml.Unmarshal(yamlContent, &node)
+	return &node, err
+}
+
+// printKeyContent searches for a given key in a YAML node and prints its content.
+func printKeyContent(node *yaml.Node, key string, depth int) (found bool, err error) {
+	if node.Kind != yaml.MappingNode && node.Kind != yaml.SequenceNode {
+		return false, nil
+	}
+
+	lowercaseKey := strings.ToLower(key)
+	return searchNode(node, lowercaseKey, depth)
+}
+
+// searchNode handles the iteration and searching logic within a node.
+func searchNode(node *yaml.Node, searchKey string, depth int) (found bool, err error) {
+	if node.Kind == yaml.MappingNode {
+		return searchMappingNode(node, searchKey, depth)
+	}
+	return searchSequenceNode(node, searchKey, depth)
+}
+
+// searchMappingNode handles searching within a mapping node.
+func searchMappingNode(node *yaml.Node, searchKey string, depth int) (bool, error) {
+	for i := 0; i < len(node.Content); i += 2 {
+		keyNode, valueNode := node.Content[i], node.Content[i+1]
+		if containsKey(keyNode, searchKey) {
+			if valueNode.Kind == yaml.ScalarNode {
+				printKeyValue(keyNode, valueNode, depth)
+			} else {
+				printKey(keyNode, depth)
+				if err := marshalAndPrint(valueNode, depth); err != nil {
+					return true, err
+				}
+			}
+			return true, nil
+		}
+
+		if found, err := printKeyContent(valueNode, searchKey, depth); err != nil || found {
+			return found, err
+		}
+	}
+	return false, nil
+}
+
+// searchSequenceNode handles searching within a sequence node.
+func searchSequenceNode(node *yaml.Node, searchKey string, depth int) (bool, error) {
+	for _, n := range node.Content {
+		if found, err := printKeyContent(n, searchKey, depth); err != nil || found {
+			return found, err
+		}
+	}
+	return false, nil
+}
+
+// containsKey checks if the keyNode contains the search key.
+func containsKey(keyNode *yaml.Node, searchKey string) bool {
+	return keyNode.Kind == yaml.ScalarNode && strings.Contains(strings.ToLower(keyNode.Value), searchKey)
+}
+
+// printKeyValue prints the key-value pair in the desired format.
+func printKeyValue(keyNode, valueNode *yaml.Node, depth int) {
+	fmt.Printf(color.GreenString("%s%s: %s\n", strings.Repeat("  ", depth), keyNode.Value, valueNode.Value))
+}
+
+// printKey prints the key in a formatted manner.
+func printKey(keyNode *yaml.Node, depth int) {
+	fmt.Printf(color.RedString("Line %v:\n", keyNode.Line))
+	fmt.Printf(color.YellowString("%s%s:\n", strings.Repeat("  ", depth), keyNode.Value))
+}
+
+// marshalAndPrint marshals a YAML node and prints its content.
+func marshalAndPrint(node *yaml.Node, depth int) error {
 	out, err := yaml.Marshal(node)
 	if err != nil {
-		log.Fatalf("error: %v", err)
+		return fmt.Errorf("error marshaling YAML: %v", err)
 	}
-	lines := strings.Split(string(out), "\n")
+
+	printIndented(out, depth)
+	return nil
+}
+
+// printIndented prints the string with indentation.
+func printIndented(text []byte, depth int) {
+	lines := strings.Split(string(text), "\n")
 	for _, line := range lines {
 		if line != "" {
 			fmt.Printf(color.CyanString("%s%s\n", strings.Repeat("  ", depth), line))
