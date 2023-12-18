@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/fatih/color"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/fatih/color"
 
 	"gopkg.in/yaml.v3"
 )
@@ -85,35 +86,37 @@ func searchNode(node *yaml.Node, searchKey string, depth int) (found bool, err e
 
 // searchMappingNode handles searching within a mapping node.
 func searchMappingNode(node *yaml.Node, searchKey string, depth int) (bool, error) {
+	foundAny := false
 	for i := 0; i < len(node.Content); i += 2 {
 		keyNode, valueNode := node.Content[i], node.Content[i+1]
 		if containsKey(keyNode, searchKey) {
+			foundAny = true // Mark that a match is found
 			if valueNode.Kind == yaml.ScalarNode {
 				printKeyValue(keyNode, valueNode, depth)
 			} else {
 				printKey(keyNode, depth)
 				if err := marshalAndPrint(valueNode, depth); err != nil {
-					return true, err
+					return foundAny, err
 				}
 			}
-			return true, nil
 		}
 
 		if found, err := printKeyContent(valueNode, searchKey, depth); err != nil || found {
-			return found, err
+			foundAny = foundAny || found
 		}
 	}
-	return false, nil
+	return foundAny, nil
 }
 
 // searchSequenceNode handles searching within a sequence node.
 func searchSequenceNode(node *yaml.Node, searchKey string, depth int) (bool, error) {
+	foundAny := false
 	for _, n := range node.Content {
 		if found, err := printKeyContent(n, searchKey, depth); err != nil || found {
-			return found, err
+			foundAny = foundAny || found
 		}
 	}
-	return false, nil
+	return foundAny, nil
 }
 
 // containsKey checks if the keyNode contains the search key.
@@ -123,7 +126,12 @@ func containsKey(keyNode *yaml.Node, searchKey string) bool {
 
 // printKeyValue prints the key-value pair in the desired format.
 func printKeyValue(keyNode, valueNode *yaml.Node, depth int) {
-	fmt.Printf(color.GreenString("%s%s: %s\n", strings.Repeat("  ", depth), keyNode.Value, valueNode.Value))
+
+	coloredKey := color.YellowString("%s%s:", strings.Repeat("  ", depth), keyNode.Value)
+	coloredValue := color.CyanString(" %s", valueNode.Value)
+
+	fmt.Printf(color.RedString("Line %v:\n", keyNode.Line))
+	fmt.Printf("%s%s\n", coloredKey, coloredValue)
 }
 
 // printKey prints the key in a formatted manner.
