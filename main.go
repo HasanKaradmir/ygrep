@@ -46,17 +46,35 @@ func main() {
 
 // processArguments processes and validates command line arguments.
 func processArguments(args []string) (searchKey string, yamlContent []byte, err error) {
-	switch len(args) {
-	case 2: // Get Values from STDIN
-		yamlContent, err = io.ReadAll(os.Stdin)
-		searchKey = args[1]
-	case 3: // Get Values from file
+	switch argCount := len(args); {
+	case argCount > 2: // Get Values from file
 		yamlContent, err = os.ReadFile(args[1])
+		if err != nil {
+			return "", nil, err
+		}
 		searchKey = args[2]
+
+	case argCount == 2: // Get Values from STDIN
+		if isStdinEmpty() {
+			fmt.Println("No data provided in standard input.")
+			os.Exit(1)
+		}
+		yamlContent, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return "", nil, err
+		}
+		searchKey = args[1]
+
 	default:
-		err = fmt.Errorf("invalid number of arguments")
+		err = fmt.Errorf("Invalid number of arguments")
 	}
 	return
+}
+
+// isStdinEmpty checks that Stdin is full or empty. 
+func isStdinEmpty() bool {
+	stat, _ := os.Stdin.Stat()
+	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
 // unmarshalYAML unmarshals the YAML content into a YAML node.
@@ -144,7 +162,7 @@ func printKey(keyNode *yaml.Node, depth int) {
 func marshalAndPrint(node *yaml.Node, depth int) error {
 	out, err := yaml.Marshal(node)
 	if err != nil {
-		return fmt.Errorf("error marshaling YAML: %v", err)
+		return fmt.Errorf("Error Marshaling YAML: %v", err)
 	}
 
 	printIndented(out, depth)
