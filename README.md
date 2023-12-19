@@ -17,13 +17,21 @@ In this repository, you'll find comprehensive details about `kgrep`, encompassin
 **kgrep** is useful for searching within a YAML file.
 
 Here we have a sample YAML file:
-![kgrep demo GIF sample yaml file](img/kgrep-sample-yaml.svg)
+
+<img src="img/kgrep-sample-yaml.gif" width="340px" height="600px">
+
+<br>
 
 Here's a **directly** **`kgrep`** demo:
-![kgrep demo GIF directly](img/kgrep-directly.gif)
+<br>
+
+<img src="img/kgrep-directly.gif" width="340px">
+
+<br>
 
 ... and here's a **`kgrep`** demo received from the pipeline:
-![kgrep demo GIF stdin](img/kgrep-stdin.gif)
+
+<img src="img/kgrep-stdin.gif" width="340px">
 
 ### Examples
 ```sh
