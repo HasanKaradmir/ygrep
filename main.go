@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/fatih/color"
 	"io"
 	"os"
 	"strings"
-
-	"github.com/fatih/color"
 
 	"gopkg.in/yaml.v3"
 )
@@ -164,8 +163,12 @@ func marshalAndPrint(node *yaml.Node, depth int) error {
 	if err != nil {
 		return fmt.Errorf("Error Marshaling YAML: %v", err)
 	}
-
-	printIndented(out, depth)
+	//if node.Kind == yaml.MappingNode {
+	//	printIndented(out, 1)
+	//} else {
+	//	printIndented(out, depth)
+	//}
+	printIndented(out, 0)
 	return nil
 }
 

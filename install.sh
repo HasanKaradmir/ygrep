@@ -22,7 +22,7 @@ else
     echo "Error: Go version didn't parse"
 fi
 
-go install github.com/HasanKaradmir/kgrep@latest
+go install github.com/HasanKaradmir/ygrep@latest
 
 GOPATH=$(go env GOPATH)/bin
 GOROOT=$(go env GOROOT)/bin
@@ -32,12 +32,12 @@ GOBIN=$(go env GOBIN)
 goPaths=($GOPATH $GOROOT $GOBIN)
 
 for str in ${goPaths[@]}; do
-    if [ -f "$str/kgrep" ]; then
+    if [ -f "$str/ygrep" ]; then
         if [ "$str" = "/usr/local/go/bin" ]; then
             break
         fi
-        cp $str/kgrep /usr/local/go/bin
-        chmod 755 /usr/local/go/bin/kgrep
+        cp $str/ygrep /usr/local/go/bin
+        chmod 755 /usr/local/go/bin/ygrep
     fi
 done
 

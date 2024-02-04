@@ -10,3 +10,8 @@
 .gitignore,a\5\a5cc2925ca8258af241be7e5b0381edf30266302
 9
 	test.yaml,e\d\edbd3b5e8edaa83ed75359e998103b79f6796c5c
+7
+LICENSE,0\3\0398ccd0f49298b10a3d76a47800d2ebecd49859
+:
+
+install.sh,c\0\c0fffa6dab38719637f643131f704750033ea1a6
