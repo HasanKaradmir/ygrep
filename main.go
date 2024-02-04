@@ -48,11 +48,11 @@ func main() {
 func processArguments(args []string) (searchKey string, yamlContent []byte, err error) {
 	switch argCount := len(args); {
 	case argCount > 2: // Get Values from file
-		yamlContent, err = os.ReadFile(args[1])
+		yamlContent, err = os.ReadFile(args[2])
 		if err != nil {
 			return "", nil, err
 		}
-		searchKey = args[2]
+		searchKey = args[1]
 
 	case argCount == 2: // Get Values from STDIN
 		if isStdinEmpty() {
@@ -63,7 +63,7 @@ func processArguments(args []string) (searchKey string, yamlContent []byte, err 
 		if err != nil {
 			return "", nil, err
 		}
-		searchKey = args[1]
+		searchKey = args[2]
 
 	default:
 		err = fmt.Errorf("Invalid number of arguments")
@@ -71,7 +71,7 @@ func processArguments(args []string) (searchKey string, yamlContent []byte, err 
 	return
 }
 
-// isStdinEmpty checks that Stdin is full or empty. 
+// isStdinEmpty checks that Stdin is full or empty.
 func isStdinEmpty() bool {
 	stat, _ := os.Stdin.Stat()
 	return (stat.Mode() & os.ModeCharDevice) != 0
