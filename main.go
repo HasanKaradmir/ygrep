@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/fatih/color"
 	"io"
@@ -15,7 +16,12 @@ import (
 // ScalarNode = Solid String
 
 func main() {
-	searchKey, yamlContent, err := processArguments(os.Args)
+	value := flag.Bool("v", false, "Value Based Search")
+	flag.Parse()
+	nFlags := flag.NFlag()
+
+	searchKey, yamlContent, err := processArguments(os.Args, nFlags)
+	//fmt.Println(searchKey, yamlContent)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error processing arguments: %v\n", err)
 		os.Exit(1)
@@ -33,7 +39,7 @@ func main() {
 	}
 
 	content := node.Content[0] // Get Node Content
-	found, err := printKeyContent(content, searchKey, 0)
+	found, err := printKeyContent(content, searchKey, 0, *value)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Occurred Error: %v\n", err)
 		os.Exit(1)
@@ -44,16 +50,16 @@ func main() {
 }
 
 // processArguments processes and validates command line arguments.
-func processArguments(args []string) (searchKey string, yamlContent []byte, err error) {
+func processArguments(args []string, flagsCount int) (searchKey string, yamlContent []byte, err error) {
 	switch argCount := len(args); {
-	case argCount > 2: // Get Values from file
-		yamlContent, err = os.ReadFile(args[2])
+	case argCount > flagsCount+2: // Get Values from file
+		yamlContent, err = os.ReadFile(args[flagsCount+2])
 		if err != nil {
 			return "", nil, err
 		}
-		searchKey = args[1]
+		searchKey = args[flagsCount+1]
 
-	case argCount == 2: // Get Values from STDIN
+	case argCount == flagsCount+2: // Get Values from STDIN
 		if isStdinEmpty() {
 			fmt.Println("No data provided in standard input.")
 			os.Exit(1)
@@ -62,7 +68,7 @@ func processArguments(args []string) (searchKey string, yamlContent []byte, err 
 		if err != nil {
 			return "", nil, err
 		}
-		searchKey = args[2]
+		searchKey = args[flag.NFlag()+2]
 
 	default:
 		err = fmt.Errorf("Invalid number of arguments")
@@ -84,52 +90,71 @@ func unmarshalYAML(yamlContent []byte) (*yaml.Node, error) {
 }
 
 // printKeyContent searches for a given key in a YAML node and prints its content.
-func printKeyContent(node *yaml.Node, key string, depth int) (found bool, err error) {
+func printKeyContent(node *yaml.Node, key string, depth int, kind bool) (found bool, err error) {
 	if node.Kind != yaml.MappingNode && node.Kind != yaml.SequenceNode {
 		return false, nil
 	}
 
 	lowercaseKey := strings.ToLower(key)
-	return searchNode(node, lowercaseKey, depth)
+	return searchNode(node, lowercaseKey, depth, kind)
 }
 
 // searchNode handles the iteration and searching logic within a node.
-func searchNode(node *yaml.Node, searchKey string, depth int) (found bool, err error) {
+func searchNode(node *yaml.Node, searchKey string, depth int, kind bool) (found bool, err error) {
 	if node.Kind == yaml.MappingNode {
-		return searchMappingNode(node, searchKey, depth)
+		return searchMappingNode(node, searchKey, depth, kind)
 	}
-	return searchSequenceNode(node, searchKey, depth)
+	return searchSequenceNode(node, searchKey, depth, kind)
 }
 
 // searchMappingNode handles searching within a mapping node.
-func searchMappingNode(node *yaml.Node, searchKey string, depth int) (bool, error) {
+func searchMappingNode(node *yaml.Node, searchKey string, depth int, kind bool) (bool, error) {
 	foundAny := false
 	for i := 0; i < len(node.Content); i += 2 {
 		keyNode, valueNode := node.Content[i], node.Content[i+1]
-		if containsKey(keyNode, searchKey) {
-			foundAny = true // Mark that a match is found
-			if valueNode.Kind == yaml.ScalarNode {
-				printKeyValue(keyNode, valueNode, depth)
-			} else {
-				printKey(keyNode, depth)
-				if err := marshalAndPrint(valueNode, depth); err != nil {
-					return foundAny, err
+		if !kind {
+			if containsKey(keyNode, searchKey) {
+				foundAny = true // Mark that a match is found
+				if valueNode.Kind == yaml.ScalarNode {
+					printKeyValue(keyNode, valueNode, depth)
+				} else {
+					printKey(keyNode, depth)
+					if err := marshalAndPrint(valueNode, depth); err != nil {
+						return foundAny, err
+					}
 				}
+			}
+
+			if found, err := printKeyContent(valueNode, searchKey, depth, kind); err != nil || found {
+				foundAny = foundAny || found
+			}
+		} else {
+			if containsKey(valueNode, searchKey) {
+				foundAny = true // Mark that a match is found
+				if valueNode.Kind == yaml.ScalarNode {
+					printKeyValue(keyNode, valueNode, depth)
+				} else {
+					printKey(keyNode, depth)
+					if err := marshalAndPrint(valueNode, depth); err != nil {
+						return foundAny, err
+					}
+				}
+			}
+
+			if found, err := printKeyContent(valueNode, searchKey, depth, kind); err != nil || found {
+				foundAny = foundAny || found
 			}
 		}
 
-		if found, err := printKeyContent(valueNode, searchKey, depth); err != nil || found {
-			foundAny = foundAny || found
-		}
 	}
 	return foundAny, nil
 }
 
 // searchSequenceNode handles searching within a sequence node.
-func searchSequenceNode(node *yaml.Node, searchKey string, depth int) (bool, error) {
+func searchSequenceNode(node *yaml.Node, searchKey string, depth int, kind bool) (bool, error) {
 	foundAny := false
 	for _, n := range node.Content {
-		if found, err := printKeyContent(n, searchKey, depth); err != nil || found {
+		if found, err := printKeyContent(n, searchKey, depth, kind); err != nil || found {
 			foundAny = foundAny || found
 		}
 	}
@@ -168,7 +193,7 @@ func marshalAndPrint(node *yaml.Node, depth int) error {
 	//} else {
 	//	printIndented(out, depth)
 	//}
-	printIndented(out, 0)
+	printIndented(out, depth)
 	return nil
 }
 
