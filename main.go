@@ -68,7 +68,7 @@ func processArguments(args []string, flagsCount int) (searchKey string, yamlCont
 		if err != nil {
 			return "", nil, err
 		}
-		searchKey = args[flag.NFlag()+2]
+		searchKey = args[flag.NFlag()+1]
 
 	default:
 		err = fmt.Errorf("Invalid number of arguments")

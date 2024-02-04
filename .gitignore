@@ -1,4 +1,4 @@
 *.yaml
 *.yml
 *.exe
-.idea/
+.idea/**
