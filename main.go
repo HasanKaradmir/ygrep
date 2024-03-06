@@ -16,20 +16,31 @@ import (
 // ScalarNode = Solid String
 
 func main() {
-	value := flag.Bool("v", false, "Value Based Search")
-	flag.Parse()
-	nFlags := flag.NFlag()
+	value := flag.Bool("v", false, "value-based search")
+	help := flag.Bool("h", false, "show help message")
 
+	flag.Usage = func() {
+		printHelp()
+	}
+
+	flag.Parse()
+
+	if *help {
+		printHelp()
+		return
+	}
+	nFlags := flag.NFlag()
 	searchKey, yamlContent, err := processArguments(os.Args, nFlags)
-	//fmt.Println(searchKey, yamlContent)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error processing arguments: %v\n", err)
+		printHelp()
 		os.Exit(1)
 	}
 
 	node, err := unmarshalYAML(yamlContent)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error unmarshaling YAML: %v\n", err)
+		printHelp()
 		os.Exit(1)
 	}
 
@@ -42,11 +53,33 @@ func main() {
 	found, err := printKeyContent(content, searchKey, 0, *value)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Occurred Error: %v\n", err)
+		printHelp()
 		os.Exit(1)
 	}
 	if !found {
 		fmt.Printf("Key '%s' not found\n", searchKey)
 	}
+}
+
+// printHelp shows help messages.
+func printHelp() {
+	help := `USAGE: ygep [-v] <file-path>
+
+search the contents of <file-path>.
+
+Options:
+  ygrep       : default setted to key-based value
+  ygrep -v    : value based search
+  
+  ygrep -h    : show this message
+
+Examples:
+  key-based YAML search
+  $ ygrep key ./search_file.yaml
+  
+  value-based YAML search
+  $ ygrep -v value ./search_file.yaml`
+	fmt.Fprintf(os.Stderr, "%s\n", help)
 }
 
 // processArguments processes and validates command line arguments.
