@@ -22,10 +22,17 @@ Here we have a sample YAML file:
 
 <br>
 
-Here's a **directly** **`ygrep`** demo:
+Here's a directly **key-based search** **`ygrep`** demo:
 <br>
 
-<img src="img/ygrep-directly.gif" width="340px">
+<img src="img/ygrep-key-based.gif" width="340px">
+
+<br>
+
+Here's a directly **value-based search** **`ygrep`** demo:
+<br>
+
+<img src="img/ygrep-value-based.gif" width="340px">
 
 <br>
 
