@@ -18,27 +18,27 @@ In this repository, you'll find comprehensive details about `ygrep`, encompassin
 
 Here we have a sample YAML file:
 
-<img src="img/ygrep-sample-file.gif" width="640px">
+<img src="img/ygrep-sample-file.gif" >
 
 <br>
 
 Here's a directly **key-based search** **`ygrep`** demo:
 <br>
 
-<img src="img/ygrep-key-based.gif" width="640px">
+<img src="img/ygrep-key-based.gif" >
 
 <br>
 
 Here's a directly **value-based search** **`ygrep`** demo:
 <br>
 
-<img src="img/ygrep-value-based.gif" width="640px">
+<img src="img/ygrep-value-based.gif" >
 
 <br>
 
 ... and here's a **`ygrep`** demo received from the pipeline:
 
-<img src="img/ygrep-kubectl.gif" width="640px">
+<img src="img/ygrep-kubectl.gif" >
 
 ### Examples
 ```sh
